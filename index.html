@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>大量傷患實境解謎：大型車禍現場</title>
+    
+    <!-- 引入 React 和 Babel -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 自定義樣式 -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
+        
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #111827; /* Dark Gray */
+            color: #f3f4f6;
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* 自定義捲軸 */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1f2937; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4b5563; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6b7280; 
+        }
+
+        /* 動畫 */
+        .fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+        .slide-up {
+            animation: slideUp 0.5s ease-out forwards;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        /* 遊戲化邊框 */
+        .cyber-border {
+            position: relative;
+            background: #1f2937; /* Gray-800 */
+            border: 1px solid #374151;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+        }
+        .cyber-border::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 2px;
+            background: linear-gradient(90deg, transparent, #ef4444, transparent);
+            z-index: 10;
+        }
+
+        /* 按鈕特效 */
+        .btn-press {
+            transition: all 0.1s;
+        }
+        .btn-press:active {
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // --- 圖示組件 (SVG) ---
+        const Icons = {
+            AlertTriangle: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>,
+            Clock: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+            Activity: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>,
+            Phone: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.12 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>,
+            ArrowRight: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>,
+            GripVertical: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>,
+            Lock: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>,
+            CheckCircle: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>,
+            MapPin: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>,
+            Award: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>
+        };
+
+        // --- 資料設定 ---
+        const STAGES = {
+            INTRO: 0,
+            MAP_REPORT: 1,
+            DIALOGUE_ACTION: 2,
+            SMART_ORDER: 3,
+            CONE_PLACEMENT: 4,
+            TRAFFIC_CONTROL: 5,
+            TRIAGE_SORT: 6,
+            FIND_RESOURCES: 7,
+            STOP_BLEED_ARM: 8,
+            STOP_BLEED_LEG: 9,
+            FRACTURE_FIX: 10,
+            CPR_AED: 11,
+            CONCLUSION: 12
+        };
+
+        const CONFIG = {
+            passcodes: {
+                resources: ['8324123', '832428', '832444'],
+                bleed_arm: '341826',
+                bleed_leg: '135246',
+                fracture: '444234',
+                cpr: '284715'
+            },
+            urls: {
+                padlet_report: "https://padlet.com/phyllis41/padlet-bl0b1p0sbf888tpq/wish/LNV1Q709A5djZmq3",
+                padlet_arm: "https://padlet.com/phyllis41/padlet-bl0b1p0sbf888tpq/wish/NvylWE5Ry1pqW0OX",
+                padlet_leg: "https://padlet.com/phyllis41/padlet-bl0b1p0sbf888tpq/wish/j40PQDyJxBlDZvXB",
+                padlet_fracture: "https://padlet.com/phyllis41/padlet-bl0b1p0sbf888tpq/wish/L8KjW9qAjr52WJbv",
+                padlet_cpr: "https://padlet.com/phyllis41/padlet-bl0b1p0sbf888tpq/wish/E851Q0vbD6DdWVAb",
+                // 使用相對路徑引用本地圖片
+                map_image: "./images/map.png"
+            }
+        };
+
+        const SMART_TASKS = [
+            { id: 'o1', text: '找最近警衛老師幫忙' },
+            { id: 'o2', text: '放警告標示' },
+            { id: 'o3', text: '去健康中心與總務處求援' },
+            { id: 'o4', text: '把急救物資帶到校門口' },
+            { id: 'o5', text: '大聲呼喊並指揮：能到圖書館走廊躲雨，有熱茶可以使用' }
+        ];
+
+        const TRIAGE_PATIENTS = [
+            { id: 't1', text: '頭部重創，昏迷不醒，呼吸急促胸口起伏不明顯', category: 'RED', label: '紅' },
+            { id: 't2', text: '左手臂被擋風玻璃切開深深傷口，正在不斷出血，表情痛苦', category: 'RED', label: '紅' },
+            { id: 't3', text: '右大腿外側刺出大洞冒血中、情緒驚慌', category: 'RED', label: '紅' },
+            { id: 't4', text: '右小腿呈現異常角度無出血，左手輕微擦傷，情緒不穩', category: 'YELLOW', label: '黃' },
+            { id: 't5', text: '無明顯外傷，但胸部有安全帶勒傷瘀青，呼吸急促，可以自行走到圖書館走廊', category: 'GREEN', label: '綠' },
+            { id: 't6', text: '臉部錯位、全身粉碎性骨折、胸口無起伏', category: 'BLACK', label: '黑' }
+        ];
+
+        // --- 通用組件 ---
+
+        const Button = ({ onClick, children, className = "", variant = "primary", disabled = false }) => {
+            const variants = {
+                primary: "bg-gradient-to-r from-red-600 to-red-700 text-white shadow-red-500/30",
+                secondary: "bg-gray-700 text-gray-200 hover:bg-gray-600 border border-gray-600",
+                outline: "border-2 border-red-500 text-red-500 hover:bg-red-500/10",
+                success: "bg-gradient-to-r from-green-600 to-green-700 text-white shadow-green-500/30"
+            };
+            return (
+                <button 
+                    onClick={onClick} 
+                    disabled={disabled}
+                    className={`
+                        w-full sm:w-auto px-6 py-4 rounded-xl font-bold tracking-wide 
+                        shadow-lg btn-press flex items-center justify-center gap-2 
+                        text-lg transition-all ${variants[variant]} ${className} 
+                        ${disabled ? 'opacity-50 cursor-not-allowed grayscale' : ''}
+                    `}
+                >
+                    {children}
+                </button>
+            );
+        };
+
+        const Card = ({ children, title, className = "" }) => (
+            <div className={`cyber-border rounded-xl overflow-hidden slide-up ${className}`}>
+                {title && (
+                    <div className="bg-gray-900/50 p-4 border-b border-gray-700 flex items-center gap-3">
+                        <div className="h-2 w-2 rounded-full bg-red-500 animate-pulse"></div>
+                        <h2 className="text-xl font-bold text-red-400 tracking-wider">{title}</h2>
+                    </div>
+                )}
+                <div className="p-6">{children}</div>
+            </div>
+        );
+
+        // --- 遊戲主體 ---
+
+        function MciSimGame() {
+            const [stage, setStage] = useState(STAGES.INTRO);
+            const [startTime, setStartTime] = useState(null);
+            const [elapsedTime, setElapsedTime] = useState(0);
+            const [timerRunning, setTimerRunning] = useState(false);
+
+            useEffect(() => {
+                let interval;
+                if (timerRunning) {
+                    interval = setInterval(() => {
+                        setElapsedTime(Date.now() - startTime);
+                    }, 1000);
+                }
+                return () => clearInterval(interval);
+            }, [timerRunning, startTime]);
+
+            const formatTime = (ms) => {
+                const totalSecs = Math.floor(ms / 1000);
+                const mins = Math.floor(totalSecs / 60);
+                const secs = totalSecs % 60;
+                return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            };
+
+            const startGame = () => {
+                setStartTime(Date.now());
+                setTimerRunning(true);
+                setStage(STAGES.MAP_REPORT);
+                window.scrollTo(0, 0);
+            };
+
+            const nextStage = () => {
+                setStage(prev => prev + 1);
+                window.scrollTo(0, 0);
+            };
+
+            const stopGame = () => {
+                setTimerRunning(false);
+            };
+
+            const renderStage = () => {
+                switch(stage) {
+                    case STAGES.INTRO: return <IntroStage onStart={startGame} />;
+                    case STAGES.MAP_REPORT: return <MapReportStage onNext={nextStage} />;
+                    case STAGES.DIALOGUE_ACTION: return <DialogueStage onNext={nextStage} />;
+                    case STAGES.SMART_ORDER: return <SmartOrderStage onNext={nextStage} />;
+                    case STAGES.CONE_PLACEMENT: return <ConePlacementStage onNext={nextStage} />;
+                    case STAGES.TRAFFIC_CONTROL: return <TrafficControlStage onNext={nextStage} />;
+                    case STAGES.TRIAGE_SORT: return <TriageSortStage onNext={nextStage} />;
+                    case STAGES.FIND_RESOURCES: return <PasscodeStage title="尋找急救資源" desc="趕快到健康中心拿急救包協助！請輸入急救包上的通關密碼。" validCodes={CONFIG.passcodes.resources} onNext={nextStage} />;
+                    case STAGES.STOP_BLEED_ARM: return <TaskStage title="任務：左臂切割傷止血" desc="傷患左臂被擋風玻璃切割。請為主手進行急救並記錄。" padletUrl={CONFIG.urls.padlet_arm} validCode={CONFIG.passcodes.bleed_arm} onNext={nextStage} />;
+                    case STAGES.STOP_BLEED_LEG: return <TaskStage title="任務：大腿穿刺傷止血" desc="傷口在左大腿外側。請立即前往急救並記錄。" padletUrl={CONFIG.urls.padlet_leg} validCode={CONFIG.passcodes.bleed_leg} onNext={nextStage} />;
+                    case STAGES.FRACTURE_FIX: return <TaskStage title="任務：骨折固定" desc="警衛室前傷患小腿骨折。請立即固定處理並記錄。" padletUrl={CONFIG.urls.padlet_fracture} validCode={CONFIG.passcodes.fracture} onNext={nextStage} />;
+                    case STAGES.CPR_AED: return <TaskStage title="緊急狀況：失去生命徵象" desc="綠卡傷患突然倒地！CPR 30:2 並使用 AED。" padletUrl={CONFIG.urls.padlet_cpr} validCode={CONFIG.passcodes.cpr} onNext={() => { stopGame(); nextStage(); }} />;
+                    case STAGES.CONCLUSION: return <ConclusionStage finalTime={formatTime(elapsedTime)} />;
+                    default: return <div>Loading...</div>;
+                }
+            };
+
+            return (
+                <div className="min-h-screen pb-20 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]">
+                    {/* HUD Header */}
+                    <div className="fixed top-0 inset-x-0 bg-gray-900/90 backdrop-blur border-b border-gray-700 p-3 z-50 flex justify-between items-center shadow-lg">
+                        <div className="flex items-center gap-2">
+                            <div className="bg-red-900/50 p-2 rounded-lg border border-red-800">
+                                <Icons.Activity />
+                            </div>
+                            <span className="font-bold text-gray-100 hidden sm:inline tracking-widest">MCI SIMULATION</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                             <div className="text-xs text-gray-400 uppercase tracking-widest hidden sm:block">Mission Timer</div>
+                             <div className="bg-black px-4 py-1 rounded border border-gray-700 flex items-center gap-2">
+                                <span className="text-yellow-500"><Icons.Clock /></span>
+                                <span className="font-mono text-2xl font-bold text-yellow-500 tabular-nums">{formatTime(elapsedTime)}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Content Container */}
+                    <main className="container mx-auto px-4 pt-24 max-w-2xl">
+                        {renderStage()}
+                    </main>
+                </div>
+            );
+        }
+
+        // --- 關卡組件 ---
+
+        const IntroStage = ({ onStart }) => (
+            <div className="flex flex-col items-center justify-center min-h-[70vh] text-center space-y-8 fade-in">
+                <div className="relative">
+                    <div className="absolute inset-0 bg-red-500 blur-xl opacity-20 rounded-full animate-pulse"></div>
+                    <div className="bg-gray-800 p-8 rounded-2xl border-2 border-red-600 relative shadow-2xl">
+                        <span className="text-red-500"><Icons.AlertTriangle /></span>
+                    </div>
+                </div>
+                <div>
+                    <h1 className="text-3xl md:text-5xl font-black text-white mb-2 tracking-tighter">大量傷患<br/><span className="text-red-500">實境解謎模擬</span></h1>
+                    <p className="text-gray-400 text-sm tracking-widest uppercase">Scenario: School Gate Collision</p>
+                </div>
+                <Card className="text-left bg-gray-800/80 border-l-4 border-yellow-500">
+                    <p className="text-lg leading-relaxed text-gray-300">
+                        <strong className="text-white">情境：</strong>大型貨車失控衝撞校門口，造成多車追撞。正值上學高峰，傷患眾多。
+                    </p>
+                    <div className="mt-4 p-4 bg-red-900/30 rounded border border-red-900/50">
+                        <p className="font-bold text-red-400">任務目標：</p>
+                        <p className="text-sm text-gray-300">15分鐘內，依START模式檢傷、急救、穩定現場。</p>
+                    </div>
+                </Card>
+                <Button onClick={onStart} className="text-xl px-12 py-5 w-full animate-bounce shadow-red-900/50">
+                    開始任務 START MISSION
+                </Button>
+            </div>
+        );
+
+        const MapReportStage = ({ onNext }) => {
+            const [reported, setReported] = useState(false);
+            return (
+                <div className="space-y-6">
+                    <Card title="事故地點確認">
+                        <div className="aspect-video w-full bg-gray-800 mb-4 rounded-lg overflow-hidden border border-gray-700 relative group">
+                            <iframe 
+                                src="https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d870.4346323092732!2d121.62493576753342!3d23.986688112265977!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1szh-TW!2stw!4v1768108313339!5m2!1szh-TW!2stw" 
+                                width="100%" height="100%" style={{border:0}} allowFullScreen="" loading="lazy"
+                                className="opacity-80 group-hover:opacity-100 transition-opacity"
+                            ></iframe>
+                            <div className="absolute bottom-2 left-2 bg-black/70 px-2 py-1 text-xs rounded text-white font-mono">GPS: ACTIVE</div>
+                        </div>
+                        <p className="text-gray-300 mb-6 leading-relaxed">
+                            大貨車從民權七街衝下，右轉民權路爆胎失控。現場一片混亂，你需要立即行動！
+                        </p>
+                        <div className="bg-gray-800 p-6 rounded-xl border border-gray-600 text-center space-y-4">
+                            <p className="font-bold text-blue-400 text-lg">STEP 1: 啟動緊急應變</p>
+                            <a href={CONFIG.urls.padlet_report} target="_blank" onClick={() => setReported(true)}
+                               className="block w-full bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-xl transition-all transform active:scale-95 flex items-center justify-center gap-3 no-underline shadow-lg shadow-green-900/50">
+                                <span className="animate-pulse"><Icons.Phone /></span> 撥打 119 報案 (錄音)
+                            </a>
+                        </div>
+                    </Card>
+                    {reported && (
+                        <div className="fade-in">
+                            <Button onClick={onNext} variant="primary">通報完成，下一步 <Icons.ArrowRight/></Button>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const DialogueStage = ({ onNext }) => (
+            <div className="space-y-8 py-10">
+                <div className="flex gap-4 fade-in" style={{animationDelay: '0.2s'}}>
+                    <div className="w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center font-bold">A</div>
+                    <div className="bg-gray-800 p-5 rounded-r-2xl rounded-bl-2xl max-w-[85%] border border-gray-700 shadow-md">
+                        <p className="text-gray-400 text-xs mb-1">同學 A</p>
+                        <p className="text-lg">好嚴重...在等救護車來之前，我們還能做什麼？？</p>
+                    </div>
+                </div>
+                <div className="flex gap-4 justify-end fade-in" style={{animationDelay: '0.8s'}}>
+                    <div className="bg-blue-900/40 p-5 rounded-l-2xl rounded-br-2xl max-w-[85%] border border-blue-800/50 text-right shadow-md">
+                        <p className="text-blue-400 text-xs mb-1">你 (隊長)</p>
+                        <p className="text-lg text-white">我們不該發呆，去找人來幫忙吧！</p>
+                    </div>
+                    <div className="w-10 h-10 rounded-full bg-blue-700 flex items-center justify-center font-bold">You</div>
+                </div>
+                <div className="pt-12 fade-in" style={{animationDelay: '1.5s'}}>
+                    <Button onClick={onNext} className="w-full">採取行動 Initiate Action <Icons.ArrowRight/></Button>
+                </div>
+            </div>
+        );
+
+        const SmartOrderStage = ({ onNext }) => {
+            const CORRECT_SEQUENCE_IDS = ['o1', 'o2', 'o3', 'o4', 'o5'];
+            const [tasks, setTasks] = useState([...SMART_TASKS].sort(() => Math.random() - 0.5));
+            const [feedback, setFeedback] = useState("");
+            const dragItem = useRef(null);
+            const dragOverItem = useRef(null);
+
+            const handleDragStart = (e, index) => { dragItem.current = index; };
+            const handleDragEnter = (e, index) => {
+                e.preventDefault();
+                dragOverItem.current = index;
+                const copy = [...tasks];
+                const item = copy[dragItem.current];
+                copy.splice(dragItem.current, 1);
+                copy.splice(dragOverItem.current, 0, item);
+                dragItem.current = index;
+                setTasks(copy);
+            };
+
+            const submit = () => {
+                if (tasks.map(t => t.id).join(',') === CORRECT_SEQUENCE_IDS.join(',')) onNext();
+                else setFeedback("順序錯誤！提示：安全優先(警衛/警告) -> 資源(處室/物資) -> 處置");
+            };
+
+            return (
+                <Card title="SMART 應變排序">
+                    <p className="text-gray-400 mb-4">請<strong className="text-white">按住拖曳</strong>調整正確的應變順序：</p>
+                    <div className="space-y-3 mb-6">
+                        {tasks.map((item, index) => (
+                            <div key={item.id} draggable 
+                                onDragStart={(e) => handleDragStart(e, index)}
+                                onDragEnter={(e) => handleDragEnter(e, index)}
+                                onDragOver={(e) => e.preventDefault()}
+                                className="bg-gray-700/50 p-4 rounded-lg border border-gray-600 flex items-center gap-4 cursor-move active:bg-blue-900/30 active:border-blue-500 transition-colors"
+                            >
+                                <span className="text-gray-500"><Icons.GripVertical/></span>
+                                <span className="bg-gray-800 w-8 h-8 rounded-full flex items-center justify-center font-mono font-bold text-blue-400">{index + 1}</span>
+                                <span className="font-medium text-gray-200">{item.text}</span>
+                            </div>
+                        ))}
+                    </div>
+                    {feedback && <div className="p-3 bg-red-900/50 text-red-200 rounded border border-red-800 mb-4 text-center font-bold animate-pulse">{feedback}</div>}
+                    <Button onClick={submit}>確認戰術順序 Confirm</Button>
+                </Card>
+            );
+        };
+
+        const ConePlacementStage = ({ onNext }) => {
+            const [selected, setSelected] = useState([]);
+            const [msg, setMsg] = useState("");
+            const options = [
+                { id: 'A', text: 'A: 車禍發生地到校門口' },
+                { id: 'B', text: 'B: 追撞堵車尾端 (小操場後門)' },
+                { id: 'C', text: 'C: 學生宿舍下方民權路' },
+                { id: 'D', text: 'D: 宿舍門口 (民權七街/民權路)' },
+                { id: 'E', text: 'E: 學校車道往外' },
+            ];
+            
+            const toggle = (id) => setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+            
+            return (
+                <Card title="環境安全：三角錐佈署">
+                    <div className="bg-gray-800 p-2 rounded mb-4">
+                        <img src={CONFIG.urls.map_image} className="w-full h-48 object-contain rounded" alt="事故現場地圖" />
+                    </div>
+                    <p className="mb-4 text-gray-300">警衛拿來了三角錐，該放在哪裡阻絕交通？(複選)</p>
+                    <div className="grid gap-3 mb-6">
+                        {options.map(opt => (
+                            <div key={opt.id} onClick={() => toggle(opt.id)}
+                                 className={`p-4 rounded-lg border cursor-pointer flex justify-between items-center transition-all ${selected.includes(opt.id) ? 'bg-red-900/40 border-red-500' : 'bg-gray-800 border-gray-700 hover:bg-gray-700'}`}>
+                                <span>{opt.text}</span>
+                                {selected.includes(opt.id) && <span className="text-red-500"><Icons.CheckCircle/></span>}
+                            </div>
+                        ))}
+                    </div>
+                    {msg && <div className="text-red-400 mb-4 font-bold text-center">{msg}</div>}
+                    <Button onClick={() => {
+                        if ([...selected].sort().join('') === 'BE') onNext();
+                        else setMsg("部署錯誤。提示：阻絕後方追撞 (熱區變暖區) + 減少校內車輛干擾。");
+                    }}>確認部署 Deploy</Button>
+                </Card>
+            );
+        };
+
+        const TrafficControlStage = ({ onNext }) => {
+            const [selected, setSelected] = useState([]);
+            const [msg, setMsg] = useState("");
+            const options = [
+                { id: 'A', text: 'A: 車禍發生地到校門口' },
+                { id: 'B', text: 'B: 追撞堵車尾端' },
+                { id: 'C', text: 'C: 宿舍下方民權路' },
+                { id: 'D', text: 'D: 宿舍門口路口' },
+                { id: 'E', text: 'E: 學校車道往外' },
+            ];
+            const toggle = (id) => setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+
+            return (
+                <Card title="人力配置：交通指揮">
+                    <div className="bg-gray-800 p-2 rounded mb-4">
+                        <img src={CONFIG.urls.map_image} className="w-full h-48 object-contain rounded" alt="事故現場地圖" />
+                    </div>
+                    <p className="mb-4 text-gray-300">哪裡需要人員引導救護車快速到達？(複選)</p>
+                    <div className="grid gap-3 mb-6">
+                        {options.map(opt => (
+                            <div key={opt.id} onClick={() => toggle(opt.id)}
+                                 className={`p-4 rounded-lg border cursor-pointer flex justify-between items-center transition-all ${selected.includes(opt.id) ? 'bg-blue-900/40 border-blue-500' : 'bg-gray-800 border-gray-700 hover:bg-gray-700'}`}>
+                                <span>{opt.text}</span>
+                                {selected.includes(opt.id) && <span className="text-blue-500"><Icons.CheckCircle/></span>}
+                            </div>
+                        ))}
+                    </div>
+                    {msg && <div className="text-red-400 mb-4 font-bold text-center">{msg}</div>}
+                    <Button onClick={() => {
+                        if ([...selected].sort().join('') === 'BDE') onNext();
+                        else setMsg("配置錯誤。提示：引導進入熱區 (B,D) + 引導進入冷區檢傷 (E)。");
+                    }}>確認配置 Confirm</Button>
+                </Card>
+            );
+        };
+
+        const TriageSortStage = ({ onNext }) => {
+            const [patients, setPatients] = useState([...TRIAGE_PATIENTS].sort(() => Math.random() - 0.5));
+            const [msg, setMsg] = useState("");
+            const dragItem = useRef(null);
+            const dragOverItem = useRef(null);
+
+            const handleDragStart = (e, index) => { dragItem.current = index; };
+            const handleDragEnter = (e, index) => {
+                e.preventDefault();
+                dragOverItem.current = index;
+                const copy = [...patients];
+                const item = copy[dragItem.current];
+                copy.splice(dragItem.current, 1);
+                copy.splice(dragOverItem.current, 0, item);
+                dragItem.current = index;
+                setPatients(copy);
+            };
+
+            const submit = () => {
+                const priority = { 'RED': 1, 'YELLOW': 2, 'GREEN': 3, 'BLACK': 4 };
+                let correct = true;
+                // Logic: The priority value must non-decrease as we go down the list.
+                // i.e., 1, 1, 1, 2, 3, 4 is valid. 1, 2, 1 is invalid.
+                for (let i = 0; i < patients.length - 1; i++) {
+                    if (priority[patients[i].category] > priority[patients[i+1].category]) {
+                        correct = false;
+                        break;
+                    }
+                }
+
+                if (correct) onNext();
+                else setMsg("排序錯誤！請重新評估。提示：優先處理生命垂危(紅) -> 緊急(黃) -> 輕傷(綠) -> 死亡(黑)。");
+            };
+
+            return (
+                <Card title="檢傷分類 START Triage (拖曳排序)">
+                    <p className="text-gray-400 mb-4">請<strong className="text-white">按住拖曳</strong>傷患，依照 <span className="text-red-500 font-bold">紅(優先)</span> <span className="text-yellow-500 font-bold">黃</span> <span className="text-green-500 font-bold">綠</span> <span className="text-gray-500 font-bold">黑(最後)</span> 的順序由上而下排列：</p>
+                    
+                    <div className="space-y-3 mb-6">
+                        {patients.map((p, index) => (
+                            <div key={p.id} draggable 
+                                onDragStart={(e) => handleDragStart(e, index)}
+                                onDragEnter={(e) => handleDragEnter(e, index)}
+                                onDragOver={(e) => e.preventDefault()}
+                                className="bg-gray-700/50 p-4 rounded-lg border border-gray-600 flex items-center gap-4 cursor-move active:bg-blue-900/30 active:border-blue-500 transition-colors"
+                            >
+                                <span className="text-gray-500"><Icons.GripVertical/></span>
+                                <div className="flex-1">
+                                    <span className="font-medium text-gray-200">{p.text}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    {msg && <div className="text-red-400 font-bold text-center mb-4 animate-pulse">{msg}</div>}
+                    <Button onClick={submit}>確認檢傷順序 Confirm</Button>
+                </Card>
+            );
+        };
+
+        const PasscodeStage = ({ title, desc, validCodes, onNext }) => {
+            const [input, setInput] = useState("");
+            const [error, setError] = useState("");
+
+            return (
+                <Card title={title}>
+                    <p className="mb-6 text-gray-300 text-lg">{desc}</p>
+                    <div className="bg-gray-800 p-4 rounded-xl border border-gray-700">
+                        <label className="block text-xs text-gray-500 uppercase font-bold mb-2 tracking-widest">Security Clearance</label>
+                        <div className="flex gap-2">
+                            <div className="relative flex-1">
+                                <span className="absolute left-4 top-4 text-gray-500"><Icons.Lock /></span>
+                                <input type="number" value={input} onChange={(e) => setInput(e.target.value)}
+                                       className="w-full bg-gray-900 text-white pl-12 pr-4 py-3 rounded-lg border border-gray-600 focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none text-xl font-mono tracking-widest"
+                                       placeholder="PASSCODE" />
+                            </div>
+                            <button onClick={() => {
+                                const codes = Array.isArray(validCodes) ? validCodes : [validCodes];
+                                if (codes.includes(input.trim())) onNext();
+                                else { setError("ACCESS DENIED"); setInput(""); }
+                            }} className="bg-gray-700 hover:bg-gray-600 text-white px-6 rounded-lg font-bold"><Icons.CheckCircle/></button>
+                        </div>
+                        {error && <p className="text-red-500 mt-2 font-mono font-bold animate-pulse">>> {error}</p>}
+                    </div>
+                </Card>
+            );
+        };
+
+        const TaskStage = ({ title, desc, padletUrl, validCode, onNext }) => (
+            <div className="space-y-6">
+                <Card title={title}>
+                    <p className="text-lg text-gray-300 mb-6">{desc}</p>
+                    <div className="bg-yellow-900/20 p-6 rounded-xl border border-yellow-700/50 text-center mb-8">
+                        <h3 className="text-yellow-500 font-bold text-xl mb-4 tracking-widest uppercase">Field Operation</h3>
+                        <a href={padletUrl} target="_blank" className="inline-flex items-center gap-3 bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-3 px-8 rounded-full shadow-lg transform transition-transform hover:-translate-y-1 no-underline">
+                            <Icons.MapPin /> 上傳處置紀錄 Upload Data
+                        </a>
+                        <p className="text-xs text-gray-500 mt-4">完成後向關主索取密碼</p>
+                    </div>
+                    <PasscodeStage title="驗證與撤離" desc="" validCodes={validCode} onNext={onNext} />
+                </Card>
+            </div>
+        );
+
+        const ConclusionStage = ({ finalTime }) => (
+            <div className="text-center space-y-8 py-10 fade-in">
+                <div className="inline-block p-6 rounded-full bg-gradient-to-br from-yellow-400 to-orange-600 shadow-2xl shadow-orange-500/50 mb-4 animate-bounce">
+                    <span className="text-white"><Icons.Award /></span>
+                </div>
+                <h2 className="text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-red-500 uppercase italic tracking-tighter">
+                    Mission<br/>Complete
+                </h2>
+                <div className="bg-gray-800/80 p-8 rounded-2xl border border-gray-600 max-w-sm mx-auto backdrop-blur">
+                    <p className="text-gray-500 text-xs uppercase tracking-widest mb-2">Final Operation Time</p>
+                    <p className="text-6xl font-mono font-bold text-white text-shadow-glow">{finalTime}</p>
+                </div>
+                
+                <div className="text-left bg-gray-900 p-6 rounded-xl border-l-4 border-green-500 space-y-3 max-w-md mx-auto">
+                    <p className="text-gray-300 flex items-center gap-3"><span className="text-green-500"><Icons.CheckCircle/></span> 裝備清點歸位</p>
+                    <p className="text-gray-300 flex items-center gap-3"><span className="text-green-500"><Icons.CheckCircle/></span> 完成後測表單</p>
+                    <p className="text-gray-300 flex items-center gap-3"><span className="text-green-500"><Icons.CheckCircle/></span> 領取結業證書</p>
+                </div>
+                
+                <p className="text-xs text-gray-500 animate-pulse mt-8">請截圖保存成績 | PRESS SCREENSHOT</p>
+            </div>
+        );
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<MciSimGame />);
+    </script>
+</body>
+</html>
