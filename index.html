@@ -242,7 +242,7 @@
                     case STAGES.TRAFFIC_CONTROL: return <TrafficControlStage onNext={nextStage} />;
                     case STAGES.TRIAGE_SORT: return <TriageSortStage onNext={nextStage} />;
                     case STAGES.FIND_RESOURCES: return <PasscodeStage title="尋找急救資源" desc="趕快到健康中心拿急救包協助！請輸入急救包上的通關密碼。" validCodes={CONFIG.passcodes.resources} onNext={nextStage} />;
-                    case STAGES.STOP_BLEED_ARM: return <TaskStage title="任務：左臂切割傷止血" desc="傷患左臂被擋風玻璃切割。請為主手進行急救並記錄。" padletUrl={CONFIG.urls.padlet_arm} validCode={CONFIG.passcodes.bleed_arm} onNext={nextStage} />;
+                    case STAGES.STOP_BLEED_ARM: return <TaskStage title="任務：左臂切割傷止血" desc="傷患左臂被擋風玻璃切出一道很深的傷口。請為主手進行急救並記錄。" padletUrl={CONFIG.urls.padlet_arm} validCode={CONFIG.passcodes.bleed_arm} onNext={nextStage} />;
                     case STAGES.STOP_BLEED_LEG: return <TaskStage title="任務：大腿穿刺傷止血" desc="傷口在左大腿外側。請立即前往急救並記錄。" padletUrl={CONFIG.urls.padlet_leg} validCode={CONFIG.passcodes.bleed_leg} onNext={nextStage} />;
                     case STAGES.FRACTURE_FIX: return <TaskStage title="任務：骨折固定" desc="警衛室前傷患小腿骨折。請立即固定處理並記錄。" padletUrl={CONFIG.urls.padlet_fracture} validCode={CONFIG.passcodes.fracture} onNext={nextStage} />;
                     case STAGES.CPR_AED: return <TaskStage title="緊急狀況：失去生命徵象" desc="綠卡傷患突然倒地！CPR 30:2 並使用 AED。" padletUrl={CONFIG.urls.padlet_cpr} validCode={CONFIG.passcodes.cpr} onNext={() => { stopGame(); nextStage(); }} />;
@@ -321,7 +321,7 @@
                             <div className="absolute bottom-2 left-2 bg-black/70 px-2 py-1 text-xs rounded text-white font-mono">GPS: ACTIVE</div>
                         </div>
                         <p className="text-gray-300 mb-6 leading-relaxed">
-                            大貨車從民權七街衝下，右轉民權路爆胎失控。現場一片混亂，你需要立即行動！
+                            大貨車從民權七街衝下，右轉民權路往門諾方向前進時爆胎失控。現場一片混亂，你需要立即行動！
                         </p>
                         <div className="bg-gray-800 p-6 rounded-xl border border-gray-600 text-center space-y-4">
                             <p className="font-bold text-blue-400 text-lg">STEP 1: 啟動緊急應變</p>
@@ -580,7 +580,7 @@
                         </a>
                         <p className="text-xs text-gray-500 mt-4">完成後向關主索取密碼</p>
                     </div>
-                    <PasscodeStage title="驗證與撤離" desc="" validCodes={validCode} onNext={onNext} />
+                    <PasscodeStage title="完成後請跟傷患取通關密碼" desc="" validCodes={validCode} onNext={onNext} />
                 </Card>
             </div>
         );
@@ -601,6 +601,7 @@
                 <div className="text-left bg-gray-900 p-6 rounded-xl border-l-4 border-green-500 space-y-3 max-w-md mx-auto">
                     <p className="text-gray-300 flex items-center gap-3"><span className="text-green-500"><Icons.CheckCircle/></span> 裝備清點歸位</p>
                     <p className="text-gray-300 flex items-center gap-3"><span className="text-green-500"><Icons.CheckCircle/></span> 完成後測表單</p>
+                    <p className="text-gray-300 flex items-center gap-3"><span className="text-green-500"><Icons.CheckCircle/></span> 此頁面截圖：右上鎖定鍵＋Home鍵</p>
                     <p className="text-gray-300 flex items-center gap-3"><span className="text-green-500"><Icons.CheckCircle/></span> 領取結業證書</p>
                 </div>
                 
