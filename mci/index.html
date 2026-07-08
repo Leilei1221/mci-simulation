@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#070c16">
+    <title>大型車禍｜大量傷患實境解謎</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚗</text></svg>">
+    <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body class="theme-mci">
+    <main class="stage-wrap" id="app"></main>
+
+    <script src="../assets/engine.js"></script>
+    <script>
+    (function () {
+        const ui = Game.ui;
+
+        const CONFIG = {
+            passcodes: {
+                resources: ['8324123', '832428', '832444'],
+                bleed_arm: '341826',
+                bleed_leg: '135246',
+                fracture: '444234',
+                cpr: '284715'
+            },
+            urls: {
+                padlet_report: "https://padlet.com/phyllis41/padlet-bl0b1p0sbf888tpq/wish/LNV1Q709A5djZmq3",
+                padlet_arm: "https://padlet.com/phyllis41/padlet-bl0b1p0sbf888tpq/wish/NvylWE5Ry1pqW0OX",
+                padlet_leg: "https://padlet.com/phyllis41/padlet-bl0b1p0sbf888tpq/wish/j40PQDyJxBlDZvXB",
+                padlet_fracture: "https://padlet.com/phyllis41/padlet-bl0b1p0sbf888tpq/wish/L8KjW9qAjr52WJbv",
+                padlet_cpr: "https://padlet.com/phyllis41/padlet-bl0b1p0sbf888tpq/wish/E851Q0vbD6DdWVAb",
+                map_image: "./images/map.png",
+                map_embed: "https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d870.4346323092732!2d121.62493576753342!3d23.986688112265977!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1szh-TW!2stw!4v1768108313339!5m2!1szh-TW!2stw"
+            }
+        };
+
+        const SMART_TASKS = [
+            { id: 'o1', text: '找最近警衛老師幫忙' },
+            { id: 'o2', text: '放警告標示' },
+            { id: 'o3', text: '去健康中心與總務處求援' },
+            { id: 'o4', text: '把急救物資帶到校門口' },
+            { id: 'o5', text: '大聲呼喊並指揮：能到圖書館走廊躲雨，有熱茶可以使用' }
+        ];
+        const SMART_ANSWER = ['o1', 'o2', 'o3', 'o4', 'o5'];
+
+        const TRIAGE_PATIENTS = [
+            { id: 't1', text: '頭部重創，昏迷不醒，呼吸急促胸口起伏不明顯', category: 'RED' },
+            { id: 't2', text: '左手臂被擋風玻璃切開深深傷口，正在不斷出血，表情痛苦', category: 'RED' },
+            { id: 't3', text: '右大腿外側刺出大洞冒血中、情緒驚慌', category: 'RED' },
+            { id: 't4', text: '右小腿呈現異常角度無出血，左手輕微擦傷，情緒不穩', category: 'YELLOW' },
+            { id: 't5', text: '無明顯外傷，但胸部有安全帶勒傷瘀青，呼吸急促，可以自行走到圖書館走廊', category: 'GREEN' },
+            { id: 't6', text: '臉部錯位、全身粉碎性骨折、胸口無起伏', category: 'BLACK' }
+        ];
+        const PRIORITY = { RED: 1, YELLOW: 2, GREEN: 3, BLACK: 4 };
+
+        const shuffle = arr => [...arr].sort(() => Math.random() - 0.5);
+
+        const mapMedia = `
+            <div class="media">
+                <span class="media-tag">SCENE MAP</span>
+                <img src="${CONFIG.urls.map_image}" alt="事故現場地圖" style="max-height:260px;object-fit:contain;background:#0d1526">
+            </div>`;
+
+        /* ---------- 關卡 ---------- */
+
+        // 0. 開場
+        const introStage = () => ({
+            html: `
+            <div class="intro-hero">
+                <div class="intro-badge">🚗</div>
+                <div>
+                    <h1>大量傷患<br><span class="accent">實境解謎模擬</span></h1>
+                    <p class="intro-sub" style="margin-top:10px">Scenario: School Gate Collision</p>
+                </div>
+                <div class="mission-brief">
+                    <p><strong style="color:#fff">情境：</strong>大型貨車失控衝撞校門口，造成多車追撞。正值上學高峰，傷患眾多。</p>
+                    <div class="goal">
+                        <strong>任務目標：</strong>15 分鐘內，依 START 模式檢傷、急救、穩定現場。
+                    </div>
+                </div>
+                <button class="btn btn-primary" id="startBtn" style="font-size:19px;padding:18px">🚨 開始任務 START MISSION</button>
+            </div>`,
+            init() {
+                document.getElementById('startBtn').onclick = () => {
+                    Game.startTimer();
+                    Game.next();
+                };
+            }
+        });
+
+        // 1. 事故地點確認 + 119 通報
+        const mapReportStage = () => ({
+            html: ui.card('事故地點確認', `
+                <div class="media map-frame">
+                    <span class="media-tag">GPS: ACTIVE</span>
+                    <iframe src="${CONFIG.urls.map_embed}" loading="lazy" allowfullscreen title="事故地點地圖"></iframe>
+                </div>
+                <p class="lead">大貨車從民權七街衝下，右轉民權路爆胎失控。現場一片混亂，你需要立即行動！</p>
+                <div class="notice blue">
+                    <span class="notice-label">Step 1</span>
+                    啟動緊急應變：撥打 119 完成通報錄音。
+                </div>
+                <a class="btn btn-success" id="reportBtn" href="${CONFIG.urls.padlet_report}" target="_blank" rel="noreferrer">📞 撥打 119 報案（錄音）</a>
+                <button class="btn btn-primary" id="nextBtn" disabled>通報完成，下一步 →</button>
+            `, { tag: 'STAGE 01' }),
+            init() {
+                const next = document.getElementById('nextBtn');
+                document.getElementById('reportBtn').addEventListener('click', () => {
+                    next.disabled = false;
+                    Game.toast('已開啟報案錄音，完成後點「下一步」', 'info');
+                });
+                next.onclick = () => Game.next();
+            }
+        });
+
+        // 2. 對話
+        const dialogueStage = () => ({
+            html: `
+            <div class="chat" style="padding-top:32px">
+                <div class="chat-row">
+                    <div class="chat-avatar">A</div>
+                    <div class="chat-bubble">
+                        <div class="who">同學 A</div>
+                        <p>好嚴重...在等救護車來之前，我們還能做什麼？？</p>
+                    </div>
+                </div>
+                <div class="chat-row me">
+                    <div class="chat-avatar">You</div>
+                    <div class="chat-bubble">
+                        <div class="who">你（隊長）</div>
+                        <p>我們不該發呆，去找人來幫忙吧！</p>
+                    </div>
+                </div>
+            </div>
+            <button class="btn btn-primary" id="actBtn">採取行動 Initiate Action →</button>`,
+            init() {
+                document.getElementById('actBtn').onclick = () => Game.next();
+            }
+        });
+
+        // 3. SMART 應變排序
+        const smartOrderStage = () => ({
+            html: ui.card('SMART 應變排序', `
+                <p class="lead">請使用 <strong style="color:#fff">▲▼ 按鈕</strong> 調整正確的應變順序：</p>
+                <div class="sort-list" id="smartList"></div>
+                <button class="btn btn-primary" id="smartBtn">確認戰術順序 Confirm</button>
+            `, { tag: 'STAGE 03' }),
+            init() {
+                const items = shuffle(SMART_TASKS);
+                Game.sortable('smartList', items, (item, i) =>
+                    `<span class="sort-num">${i + 1}</span><span>${item.text}</span>`);
+                document.getElementById('smartBtn').onclick = () => {
+                    if (items.map(t => t.id).join(',') === SMART_ANSWER.join(',')) Game.next();
+                    else Game.toast('順序錯誤！提示：安全優先（警衛／警告）→ 資源（處室／物資）→ 處置');
+                };
+            }
+        });
+
+        // 4. 三角錐佈署 (複選 B, E)
+        const conePlacementStage = () => ({
+            html: ui.card('環境安全：三角錐佈署', `
+                ${mapMedia}
+                <p class="lead">警衛拿來了三角錐，該放在哪裡阻絕交通？<strong style="color:#fff">（複選）</strong></p>
+                <div class="choice-list" id="coneList">
+                    ${[
+                        ['A', '車禍發生地到校門口'],
+                        ['B', '追撞堵車尾端（小操場後門）'],
+                        ['C', '學生宿舍下方民權路'],
+                        ['D', '宿舍門口（民權七街／民權路）'],
+                        ['E', '學校車道往外']
+                    ].map(([k, t]) => `<button type="button" class="choice" data-id="${k}"><span class="key">${k}</span>${t}</button>`).join('')}
+                </div>
+                <button class="btn btn-primary" id="coneBtn">確認部署 Deploy</button>
+            `, { tag: 'STAGE 04' }),
+            init() {
+                const selected = new Set();
+                Game.multiSelect('coneList', selected);
+                document.getElementById('coneBtn').onclick = () => {
+                    if ([...selected].sort().join('') === 'BE') Game.next();
+                    else Game.toast('部署錯誤。提示：阻絕後方追撞（熱區變暖區）＋ 減少校內車輛干擾。');
+                };
+            }
+        });
+
+        // 5. 交通指揮 (複選 B, D, E)
+        const trafficControlStage = () => ({
+            html: ui.card('人力配置：交通指揮', `
+                ${mapMedia}
+                <p class="lead">哪裡需要人員引導救護車快速到達？<strong style="color:#fff">（複選）</strong></p>
+                <div class="choice-list" id="trafficList">
+                    ${[
+                        ['A', '車禍發生地到校門口'],
+                        ['B', '追撞堵車尾端'],
+                        ['C', '宿舍下方民權路'],
+                        ['D', '宿舍門口路口'],
+                        ['E', '學校車道往外']
+                    ].map(([k, t]) => `<button type="button" class="choice" data-id="${k}"><span class="key">${k}</span>${t}</button>`).join('')}
+                </div>
+                <button class="btn btn-primary" id="trafficBtn">確認配置 Confirm</button>
+            `, { tag: 'STAGE 05' }),
+            init() {
+                const selected = new Set();
+                Game.multiSelect('trafficList', selected);
+                document.getElementById('trafficBtn').onclick = () => {
+                    if ([...selected].sort().join('') === 'BDE') Game.next();
+                    else Game.toast('配置錯誤。提示：引導進入熱區（B、D）＋ 引導進入冷區檢傷（E）。');
+                };
+            }
+        });
+
+        // 6. 檢傷分類排序
+        const triageSortStage = () => ({
+            html: ui.card('檢傷分類 START Triage', `
+                <p class="lead">請使用 <strong style="color:#fff">▲▼ 按鈕</strong> 調整傷患順序，依照
+                    <strong style="color:#f87171">紅（優先）</strong>
+                    <strong style="color:#facc15">黃</strong>
+                    <strong style="color:#4ade80">綠</strong>
+                    <strong style="color:#9ca3af">黑（最後）</strong>
+                    由上而下排列：</p>
+                <div class="sort-list" id="triageList"></div>
+                <button class="btn btn-primary" id="triageBtn">確認檢傷順序 Confirm</button>
+            `, { tag: 'STAGE 06' }),
+            init() {
+                const items = shuffle(TRIAGE_PATIENTS);
+                Game.sortable('triageList', items, item => `<span>${item.text}</span>`);
+                document.getElementById('triageBtn').onclick = () => {
+                    const ok = items.every((p, i) =>
+                        i === items.length - 1 || PRIORITY[p.category] <= PRIORITY[items[i + 1].category]);
+                    if (ok) Game.next();
+                    else Game.toast('排序錯誤！請重新評估。\n提示：優先處理生命垂危（紅）→ 緊急（黃）→ 輕傷（綠）→ 死亡（黑）。');
+                };
+            }
+        });
+
+        // 7. 尋找急救資源
+        const resourcesStage = () => ({
+            html: ui.card('尋找急救資源', `
+                <p class="lead">趕快到健康中心拿急救包協助！請輸入急救包上的通關密碼。</p>
+                ${ui.codeGate({ btnText: '解鎖急救包 UNLOCK' })}
+            `, { tag: 'STAGE 07' }),
+            init() {
+                Game.bindCode('codeBtn', 'codeInput', CONFIG.passcodes.resources, () => Game.next(), 'ACCESS DENIED — 密碼錯誤');
+            }
+        });
+
+        // 8-10. 急救任務（共用模板）
+        const taskStage = ({ tag, title, desc, location, padletUrl, code }) => () => ({
+            html: `
+            ${ui.card(title, `
+                <p class="lead">${desc}</p>
+                <div class="notice blue">
+                    <span class="notice-label">📍 任務位置</span>
+                    <strong>${location}</strong>
+                </div>
+                <div class="notice yellow text-center">
+                    <span class="notice-label">Field Operation</span>
+                    <a class="btn btn-outline" href="${padletUrl}" target="_blank" rel="noreferrer" style="margin-top:8px">☁️ 上傳處置紀錄 Upload Data</a>
+                    <p class="small-note">完成後向關主索取密碼</p>
+                </div>
+            `, { tag })}
+            ${ui.card('完成後請跟傷患取通關密碼', ui.codeGate({ btnText: '任務確認' }), { accentDot: false })}`,
+            init() {
+                Game.bindCode('codeBtn', 'codeInput', code, () => Game.next(), 'ACCESS DENIED — 密碼錯誤');
+            }
+        });
+
+        // 11. CPR + AED
+        const cprStage = () => ({
+            html: `
+            ${ui.card('緊急狀況：失去生命徵象', `
+                <div class="alert-banner">⚠️ CRITICAL ALERT ⚠️</div>
+                <p class="lead">綠卡傷患突然倒地！需要立即進行 CPR 30:2 並使用 AED。</p>
+                <div class="notice blue">
+                    <span class="notice-label">📍 傷患位置</span>
+                    <strong>健康中心旁空地</strong>
+                </div>
+                <div class="notice yellow">
+                    <span class="notice-label">⚡ 最近的 AED 位置</span>
+                    <strong>學務處</strong>
+                </div>
+                <div class="notice green">
+                    <span class="notice-label">趕快進入 CPR 急救吧！</span>
+                    <ul class="task-list">
+                        <li><span class="idx">[1]</span>主手：實施 CPR (30:2)</li>
+                        <li><span class="idx">[2]</span>副手：取得 AED 並執行指令</li>
+                        <li><span class="idx">[3]</span>使用電擊器後執行 2 循環 30:2</li>
+                    </ul>
+                </div>
+                <a class="btn btn-outline" href="${CONFIG.urls.padlet_cpr}" target="_blank" rel="noreferrer">☁️ 上傳 CPR 紀錄</a>
+            `, { tag: 'STAGE 11' })}
+            ${ui.card('完成後請跟傷患取通關密碼', ui.codeGate({ btnText: '任務確認' }), { accentDot: false })}`,
+            init() {
+                Game.bindCode('codeBtn', 'codeInput', CONFIG.passcodes.cpr, () => {
+                    Game.stopTimer();
+                    Game.next();
+                }, 'ACCESS DENIED — 密碼錯誤');
+            }
+        });
+
+        // 12. 結業
+        const conclusionStage = () => ({
+            html: Game.ui.finish({
+                subtitle: '任務代號：大型車禍 MCI — 演練完成',
+                time: Game.state.finalTime,
+                checklist: [
+                    '裝備清點歸位',
+                    '完成後測表單',
+                    '領取結業證書',
+                    '截圖此頁面：右上鎖定鍵 ＋ Home 鍵'
+                ]
+            }),
+            init() {}
+        });
+
+        Game.mount({
+            name: '大型車禍',
+            sub: 'MCI SIMULATION',
+            homeHref: '../',
+            stages: [
+                introStage,
+                mapReportStage,
+                dialogueStage,
+                smartOrderStage,
+                conePlacementStage,
+                trafficControlStage,
+                triageSortStage,
+                resourcesStage,
+                taskStage({
+                    tag: 'STAGE 08',
+                    title: '任務：左臂切割傷止血',
+                    desc: '傷患左臂被擋風玻璃切出一道很深的傷口，鮮血不斷噴出。請為主手進行急救並記錄。',
+                    location: '圖資大樓一樓走廊等待救援',
+                    padletUrl: CONFIG.urls.padlet_arm,
+                    code: CONFIG.passcodes.bleed_arm
+                }),
+                taskStage({
+                    tag: 'STAGE 09',
+                    title: '任務：大腿穿刺傷止血',
+                    desc: '傷口在左大腿外側，傷者正用雙手壓住傷口，卻不斷冒血出來。請立即前往急救並記錄。',
+                    location: '圖資大樓一樓殘障步道等待救援',
+                    padletUrl: CONFIG.urls.padlet_leg,
+                    code: CONFIG.passcodes.bleed_leg
+                }),
+                taskStage({
+                    tag: 'STAGE 10',
+                    title: '任務：骨折固定',
+                    desc: '傷患小腿無出血，卻呈現詭異角度。請立即固定處理並記錄。',
+                    location: '警衛室後門地上坐著等待救援',
+                    padletUrl: CONFIG.urls.padlet_fracture,
+                    code: CONFIG.passcodes.fracture
+                }),
+                cprStage,
+                conclusionStage
+            ]
+        });
+    })();
+    </script>
+</body>
+</html>

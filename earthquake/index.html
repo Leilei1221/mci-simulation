@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#070c16">
+    <title>重返921｜地震應變實境解謎</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏚️</text></svg>">
+    <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body class="theme-earthquake">
+    <main class="stage-wrap" id="app"></main>
+
+    <script src="../assets/engine.js"></script>
+    <script>
+    (function () {
+        const ui = Game.ui;
+        const IMG = './images/';
+
+        const PADLET = {
+            sos: "https://padlet.com/phyllis41/padlet-bl0b1p0sbf888tpq/wish/goElQyGMYV7vW3yY",
+            patientC: "https://padlet.com/phyllis41/padlet-bl0b1p0sbf888tpq/wish/NvylWE5wGq03W0OX",
+            patientA: "https://padlet.com/phyllis41/padlet-bl0b1p0sbf888tpq/wish/MxrmZYxq2AXdQGOq",
+            patientD: "https://padlet.com/phyllis41/padlet-bl0b1p0sbf888tpq/wish/do3MQJPR5mNgW15w",
+            final: "https://padlet.com/phyllis41/padlet-bl0b1p0sbf888tpq/wish/mDRxWB72G63Oajb1"
+        };
+
+        const VICTIMS = [
+            { id: 'C', text: '傷患C：臉色蒼白眼神潰散，右手手肘因上一波地震時被掉落鋼筋水泥切出深深的傷口，血液不斷的噴出', desc: '右手肘動脈破裂' },
+            { id: 'A', text: '傷患A：雙手壓著大腿，血液一直從指縫間流出，明顯運動褲都被染紅了', desc: '雙手壓大腿' },
+            { id: 'D', text: '傷患D：臉上有血痕，呆坐在地上、呼吸有點喘，不說話', desc: '臉有血痕、呆坐' },
+            { id: 'E', text: '傷患E：剛剛跑出教室時，我胸口被掉下來的燈管砸到好痛', desc: '觀察呼吸平順' },
+            { id: 'B', text: '傷患B：嚇死我了，還有有你們，不然我都腿軟動不了....', desc: '腿軟但可對話' }
+        ];
+        const TRIAGE_ANSWER = ['C', 'A', 'D', 'E', 'B'];
+
+        function sceneImg(file, alt, icon) {
+            return `
+            <div class="media">
+                <img src="${IMG}${file}" alt="${alt}"
+                     onerror="this.outerHTML='<div class=&quot;img-fallback&quot;><span class=&quot;icon&quot;>${icon}</span><span>${alt}</span></div>'">
+            </div>`;
+        }
+
+        /* ---------- 關卡 ---------- */
+
+        // 0. 開場
+        const introStage = () => ({
+            html: `
+            <div class="intro-hero">
+                <div class="intro-badge">⚠️</div>
+                <div>
+                    <h1>大傷模擬<br><span class="accent">重返 921</span></h1>
+                    <p class="intro-sub" style="margin-top:10px">Earthquake Response Simulation</p>
+                </div>
+                <div class="mission-brief">
+                    <p><strong style="color:#fca5a5">⚠️ 任務簡報</strong></p>
+                    <p style="margin-top:8px">地面劇烈搖晃，建築物坍塌。你們被困在災難現場。<br>
+                    外界救援需要時間，你們只有 <strong style="color:#f87171;font-size:1.15em">15 分鐘</strong>。</p>
+                    <div class="goal">
+                        <strong>任務目標：</strong>依照 START 檢傷分類施以急救，穩定傷者。
+                    </div>
+                </div>
+                <button class="btn btn-primary" id="startBtn" style="font-size:19px;padding:18px">⚠️ 開始任務</button>
+            </div>`,
+            init() {
+                document.getElementById('startBtn').onclick = () => {
+                    Game.startTimer();
+                    Game.next();
+                };
+            }
+        });
+
+        // 1. 地震反應
+        const quakeReactionStage = () => ({
+            html: ui.card('緊急狀況', `
+                <p style="color:var(--muted);margin-bottom:6px">地點：健康與護理教室</p>
+                <p class="lead text-center" style="font-size:21px;font-weight:700">地震發生中！你的第一反應？</p>
+                <div class="choice-grid" id="reactionGrid">
+                    ${[
+                        ['desk.png', '桌子', '🪑', '躲在桌子下', '1'],
+                        ['chair.png', '椅子', '💺', '躲在椅子旁', '0'],
+                        ['pillar.png', '柱子', '🏛️', '抱住柱子', '0'],
+                        ['door.png', '門', '🚪', '衝到門邊', '0']
+                    ].map(([f, alt, icon, label, ok]) => `
+                        <button type="button" class="choice-card" data-ok="${ok}">
+                            <div class="thumb"><img src="${IMG}${f}" alt="${alt}" onerror="this.outerHTML='<span style=&quot;font-size:40px&quot;>${icon}</span>'"></div>
+                            <div class="label">${label}</div>
+                        </button>`).join('')}
+                </div>
+            `, { tag: 'LIVE' }),
+            init() {
+                document.getElementById('reactionGrid').addEventListener('click', (e) => {
+                    const c = e.target.closest('.choice-card');
+                    if (!c) return;
+                    if (c.dataset.ok === '1') Game.next();
+                    else Game.toast('警告！錯誤選擇可能導致致命後果。\n地震時應立即「趴下、掩護、穩住」。');
+                });
+            }
+        });
+
+        // 2. 震後評估
+        const assessStage = () => ({
+            html: ui.card('現場狀況評估', `
+                ${sceneImg('classroom.png', '地震後教室場景', '🏚️')}
+                <p class="lead text-center">晃動停止。教室結構受損，物品散落。</p>
+                <button class="btn btn-primary" id="nextBtn">下一步行動 →</button>
+            `, { tag: 'STAGE 02' }),
+            init() {
+                document.getElementById('nextBtn').onclick = () => Game.next();
+            }
+        });
+
+        // 3. 選擇出口
+        const exitStage = () => ({
+            html: ui.card('尋找逃生出口', `
+                <p style="color:var(--muted);margin-bottom:14px">判斷最安全的撤離路徑</p>
+                ${sceneImg('exits.png', '教室出口配置圖', '🚪')}
+                <div class="choice-list" id="doorList">
+                    ${[
+                        ['A', '教室大門（玻璃破損）'],
+                        ['B', '殘障步道側門'],
+                        ['C', '後方小門']
+                    ].map(([k, t]) => `<button type="button" class="choice" data-door="${k}"><span class="key">${k}</span>${t}</button>`).join('')}
+                </div>
+            `, { tag: 'STAGE 03' }),
+            init() {
+                document.getElementById('doorList').addEventListener('click', (e) => {
+                    const c = e.target.closest('.choice');
+                    if (!c) return;
+                    const door = c.dataset.door;
+                    if (door === 'A') Game.next();
+                    else if (door === 'B') Game.toast('通道受阻：側門變形卡死，無法開啟。');
+                    else Game.toast('危險區域：後方小門上方有懸掛物，且位於建築裂縫正下方。');
+                });
+            }
+        });
+
+        // 4. 對外求援
+        const sosStage = () => ({
+            html: ui.card('📍 對外求援', `
+                <p style="color:#93c5fd;font-size:13px;margin-bottom:12px">目前位置：健康護理教室</p>
+                ${sceneImg('map.png', '校園地圖', '🗺️')}
+                <a class="btn btn-primary" href="${PADLET.sos}" target="_blank" rel="noreferrer">📞 開始錄音報案</a>
+                <div class="hint" style="margin-top:16px">📡 任務：點擊上方按鈕進行通話錄音，完成後輸入專線號碼。</div>
+                ${ui.codeGate({ placeholder: '輸入報案專線', btnText: '確認通訊連結' })}
+            `, { tag: 'STAGE 04' }),
+            init() {
+                Game.bindCode('codeBtn', 'codeInput', ['119', '112', '110'], () => Game.next(), '通訊失敗：請輸入正確的緊急報案號碼');
+            }
+        });
+
+        // 5. 物資搜尋
+        const suppliesStage = () => ({
+            html: ui.card('🏥 物資搜尋', `
+                ${sceneImg('supplies.png', '急救物資位置', '🏥')}
+                <div class="hint">💡 提示：健康中心有說過，學務處會放急救物資，尋找急救包上的編號以解鎖。</div>
+                ${ui.codeGate({ placeholder: 'ENTER PASSCODE', btnText: 'UNLOCK KIT' })}
+            `, { tag: 'STAGE 05' }),
+            init() {
+                Game.bindCode('codeBtn', 'codeInput', ['8324123', '832428', '832444'], () => Game.next(), 'ACCESS DENIED — 密碼錯誤');
+            }
+        });
+
+        // 6. 環境安全
+        const safetyStage = () => ({
+            html: ui.card('接觸傷患', `
+                <p style="color:var(--muted);margin-bottom:10px">地點：中廊（建築物連接處）</p>
+                <p class="lead">發現三位同學哀號。上方有掉落碎石。<br><strong style="color:#fff">你的首要行動？</strong></p>
+                <div class="choice-list" id="safetyList">
+                    <button type="button" class="choice" data-ok="1" style="padding:20px 16px">
+                        <span style="font-size:26px">🏃</span>
+                        <span style="text-align:left"><strong style="display:block;font-size:17px">建立安全區</strong>
+                        <span style="font-size:13px;color:var(--muted)">快速移動至空曠處 (Scene Safety)</span></span>
+                    </button>
+                    <button type="button" class="choice" data-ok="0" style="padding:20px 16px">
+                        <span style="font-size:26px">🩹</span>
+                        <span style="text-align:left"><strong style="display:block;font-size:17px">原地急救</strong>
+                        <span style="font-size:13px;color:var(--muted)">拿出止血帶協助止血</span></span>
+                    </button>
+                </div>
+            `, { tag: 'STAGE 06' }),
+            init() {
+                document.getElementById('safetyList').addEventListener('click', (e) => {
+                    const c = e.target.closest('.choice');
+                    if (!c) return;
+                    if (c.dataset.ok === '1') Game.next();
+                    else Game.toast('危險！你處於「熱區」(Hot Zone)。\nSMARTER 原則第一條：Scene Safety。請先確保自身與傷患脫離危險環境。');
+                });
+            }
+        });
+
+        // 7. 檢傷分類
+        const triageStage = () => ({
+            html: ui.card('START 檢傷分類', `
+                <p style="color:var(--muted);font-size:13px;margin-bottom:14px">點擊箭頭排序：依急救優先順序由上而下排列</p>
+                <div class="sort-list" id="triageList"></div>
+                <button class="btn btn-primary" id="triageBtn">確認優先順序</button>
+            `, { tag: 'STAGE 07' }),
+            init() {
+                const items = [...VICTIMS].sort(() => Math.random() - 0.5);
+                Game.sortable('triageList', items, item =>
+                    `<span style="display:block"><strong style="display:block;font-size:14px">${item.text}</strong>
+                     <span style="font-size:12px;color:var(--muted)">${item.desc}</span></span>`);
+                document.getElementById('triageBtn').onclick = () => {
+                    if (items.map(v => v.id).join(',') === TRIAGE_ANSWER.join(',')) Game.next();
+                    else Game.toast('檢傷邏輯錯誤。\n回憶 START 原則：\n1. 能走嗎？\n2. 有呼吸嗎？\n3. 呼吸頻率／微血管充填／意識狀態');
+                };
+            }
+        });
+
+        // 8-10. 急救處理（共用模板）
+        const treatmentStage = ({ tag, patient, desc, padletUrl, code }) => () => ({
+            html: ui.card(`${patient === 'C' ? '優先' : '次要'}目標：傷患 ${patient}`, `
+                <div class="notice red">
+                    <span class="notice-label">傷勢狀況</span>
+                    ${desc}
+                </div>
+                <div class="notice">
+                    <span class="notice-label" style="color:#67e8f9">Task Protocol</span>
+                    <ul class="task-list">
+                        <li><span class="idx">[1]</span>主手進行急救處置</li>
+                        <li><span class="idx">[2]</span>副手錄影並拍照存證</li>
+                        <li><span class="idx">[3]</span>資料上傳雲端</li>
+                    </ul>
+                </div>
+                <a class="btn btn-outline" href="${padletUrl}" target="_blank" rel="noreferrer">☁️ 上傳現場紀錄 (Padlet)</a>
+                <div style="margin-top:16px">
+                    ${ui.codeGate({ placeholder: '傷患生命密碼', btnText: '任務確認' })}
+                </div>
+            `, { tag }),
+            init() {
+                Game.bindCode('codeBtn', 'codeInput', code, () => Game.next(), '密碼錯誤，請重新輸入');
+            }
+        });
+
+        // 11. 戰術決策
+        const tacticsStage = () => ({
+            html: ui.card('戰術決策', `
+                <p class="lead">初步檢傷完成。請勾選後續行動方案<strong style="color:#fff">（複選）</strong>：</p>
+                <div class="choice-list" id="tacticsList">
+                    ${[
+                        ['1', '指派人員引導救護車'],
+                        ['2', '留守人員監測傷患生命徵象'],
+                        ['3', '外圍巡邏搜尋其他倖存者'],
+                        ['4', '全員進入建築物深度搜索']
+                    ].map(([k, t]) => `<button type="button" class="choice" data-id="${k}"><span class="key">${k}</span>${t}</button>`).join('')}
+                </div>
+                <button class="btn btn-primary" id="tacticsBtn">確認部署</button>
+            `, { tag: 'STAGE 11' }),
+            init() {
+                const selected = new Set();
+                Game.multiSelect('tacticsList', selected);
+                document.getElementById('tacticsBtn').onclick = () => {
+                    const ok = selected.has('1') && selected.has('2') && selected.has('3') && !selected.has('4') && selected.size === 3;
+                    if (ok) Game.next();
+                    else Game.toast('請重新思考：\n1. 外部救援需要引導嗎？\n2. 傷患是否需要持續監控？\n3. 建築結構是否安全？');
+                };
+            }
+        });
+
+        // 12. 最終骨折處理
+        const fractureStage = () => ({
+            html: ui.card('行政大樓前', `
+                <div class="alert-banner">!!! NEW CASUALTY DETECTED !!!</div>
+                <div class="notice red">
+                    <span class="notice-label">傷勢</span>
+                    左小腿閉鎖性骨折（無出血小腿成奇怪角度）
+                </div>
+                <div class="notice">
+                    <ul class="task-list">
+                        <li><span class="idx">➤</span>無出血無傷口</li>
+                        <li><span class="idx">➤</span>任務：進行骨折固定</li>
+                        <li><span class="idx">➤</span>紀錄：多角度拍攝上傳</li>
+                    </ul>
+                </div>
+                <a class="btn btn-outline" href="${PADLET.final}" target="_blank" rel="noreferrer">📸 UPLOAD EVIDENCE</a>
+                <div style="margin-top:16px">
+                    ${ui.codeGate({ placeholder: 'FINAL CODE', btnText: 'MISSION COMPLETE' })}
+                </div>
+            `, { tag: 'FINAL' }),
+            init() {
+                Game.bindCode('codeBtn', 'codeInput', 'end', () => {
+                    Game.stopTimer();
+                    Game.next();
+                }, '請輸入正確的最終密碼');
+            }
+        });
+
+        // 13. 完成證書
+        const certificateStage = () => ({
+            html: Game.ui.finish({
+                subtitle: '任務代號：重返 921 — Elite Rescue Team',
+                time: Game.state.finalTime,
+                checklist: [
+                    '裝備歸位：急救包、包紮用品',
+                    '數據回報：填寫後測表單',
+                    '此頁面截圖：右上鎖定鍵 ＋ Home 鍵',
+                    '認證：向指揮官（老師）領取證照'
+                ]
+            }),
+            init() {}
+        });
+
+        Game.mount({
+            name: '重返 921',
+            sub: 'EARTHQUAKE SIM',
+            homeHref: '../',
+            stages: [
+                introStage,
+                quakeReactionStage,
+                assessStage,
+                exitStage,
+                sosStage,
+                suppliesStage,
+                safetyStage,
+                triageStage,
+                treatmentStage({
+                    tag: 'RESCUE 01', patient: 'C',
+                    desc: '右手手肘切出深深的傷口，血液不斷的噴出，用自己的左手手壓住傷口',
+                    padletUrl: PADLET.patientC, code: 'wd343'
+                }),
+                treatmentStage({
+                    tag: 'RESCUE 02', patient: 'A',
+                    desc: '傷口在左大腿外側大量出血中',
+                    padletUrl: PADLET.patientA, code: 'stop893'
+                }),
+                treatmentStage({
+                    tag: 'RESCUE 03', patient: 'D',
+                    desc: '目擊者說看到患者突然抱胸痛苦倒下後就無反應',
+                    padletUrl: PADLET.patientD, code: '741314'
+                }),
+                tacticsStage,
+                fractureStage,
+                certificateStage
+            ]
+        });
+    })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#070c16">
+    <title>零日攻擊｜空襲應變實境解謎</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚨</text></svg>">
+    <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body class="theme-zeroday">
+    <div id="scene-bg"><img id="scene-bg-img" src="" alt=""></div>
+    <main class="stage-wrap" id="app"></main>
+
+    <audio id="sirenAudio" src="https://www.ylhpb.gov.tw/df_ufiles/e/ug.mp3" loop></audio>
+    <audio id="allClearAudio" src="https://www.ycjh.tp.edu.tw/uploadfiles/annex/20240328170946_2.mp3"></audio>
+
+    <script src="../assets/engine.js"></script>
+    <script>
+    (function () {
+        const ui = Game.ui;
+
+        const CONFIG = {
+            shelterMapLink: "https://www.hualien.gov.tw/content_edit.php?menu=2503&typeid=2953",
+
+            padletShelterPhoto: "https://padlet.com/phyllis41/padlet-bl0b1p0sbf888tpq/wish/LNV1Q7097P3BZmq3",
+            padletPatient1: "https://padlet.com/phyllis41/padlet-bl0b1p0sbf888tpq/wish/e9YpQN9vz8ADaxjM",
+            padletPatient2: "https://padlet.com/phyllis41/padlet-bl0b1p0sbf888tpq/wish/e9YpQN9vzBy1axjM",
+            padletPatient3: "https://padlet.com/phyllis41/padlet-bl0b1p0sbf888tpq/wish/e9YpQN9vzBy1axjM",
+            padletCPR: "https://padlet.com/phyllis41/padlet-bl0b1p0sbf888tpq/wish/J24jalr50lyEZ0A1",
+
+            imgSchoolMap: "https://drive.google.com/thumbnail?id=1AMTUxNHA3l09jx6p81--QnPs8bOYElSj&sz=w1000",
+            imgMoveMap: "https://drive.google.com/thumbnail?id=1B-cpjIAnvv5DBdykRcTX9KVptNiHPtvV&sz=w1000",
+            imgSupplies: "https://drive.google.com/thumbnail?id=1i_fysXmumVAubmf1tQz3vkADMHaU16Pl&sz=w1000",
+
+            mapEmbed: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d313.5611066970752!2d121.62292258755103!3d23.98788648558215!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x34689f925eb6b6db%3A0x2d8453971242c745!2z6JeN55uk5a2Q5pep5Y2I6aSQIOS4ree-juW6lw!5e0!3m2!1szh-TW!2stw!4v1763690942767!5m2!1szh-TW!2stw",
+
+            bgIntro: "https://images.unsplash.com/photo-1552965944-16c2797698df?q=80&w=1920&auto=format&fit=crop",
+            bgSchool: "https://images.unsplash.com/photo-1592424638584-e5c00679926b?q=80&w=1920&auto=format&fit=crop",
+            bgShelter: "https://images.unsplash.com/photo-1504863722485-b834c3339d40?q=80&w=1920&auto=format&fit=crop",
+            bgStairs: "https://images.unsplash.com/photo-1505015920881-0f83c2f7c95e?q=80&w=1920&auto=format&fit=crop",
+            bgMedical: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?q=80&w=1920&auto=format&fit=crop",
+            bgCPR: "https://images.unsplash.com/photo-1579684385127-1ef15d508118?q=80&w=1920&auto=format&fit=crop"
+        };
+
+        const TRIAGE_PATIENTS = [
+            { id: 1, text: '開放性頭部創傷，伴有大量出血；左腿骨折，意識模糊，疑似休克', priority: 1 },
+            { id: 4, text: '右肩頰嚴重撕裂傷，伴有大出血，目前仍可自行移動', priority: 3 },
+            { id: 2, text: '胸部鈍器傷（建築坍塌碎片砸傷）疑似多根肋骨骨折，呼吸困難，懷疑氣胸', priority: 1 },
+            { id: 5, text: '前胸多處擦傷與瘀傷，疑似腰部扭傷，無法自行站立', priority: 2 },
+            { id: 3, text: '右腿輕度燒傷，前臂被鋒利碎片劃出較深的傷口，持續出血，無法自行移動', priority: 2 }
+        ];
+
+        /* ---------- 場景背景 / 音效 ---------- */
+        function backgroundFor(stage) {
+            if (stage === 0) return CONFIG.bgIntro;
+            if (stage === 1) return CONFIG.bgSchool;
+            if (stage >= 2 && stage <= 4) return CONFIG.bgShelter;
+            if (stage >= 5 && stage <= 6) return CONFIG.bgStairs;
+            if (stage === 7) return CONFIG.bgMedical;
+            if (stage >= 8 && stage <= 11) return CONFIG.bgSchool;
+            if (stage === 12) return CONFIG.bgCPR;
+            return CONFIG.bgIntro;
+        }
+
+        function onStage(stage) {
+            const bg = document.getElementById('scene-bg');
+            const img = document.getElementById('scene-bg-img');
+            const url = backgroundFor(stage);
+            if (img.getAttribute('src') !== url) img.src = url;
+            bg.classList.toggle('alert', stage >= 1 && stage <= 3);
+
+            const siren = document.getElementById('sirenAudio');
+            const allClear = document.getElementById('allClearAudio');
+            if (stage >= 1 && stage <= 3) siren.play().catch(() => {});
+            else siren.pause();
+            if (stage === 5) allClear.play().catch(() => {});
+            else { allClear.pause(); allClear.currentTime = 0; }
+        }
+
+        /* ---------- 關卡 ---------- */
+
+        // 0. 開場
+        const introStage = () => ({
+            html: `
+            <div class="intro-hero">
+                <div class="intro-badge">🚨</div>
+                <div>
+                    <h1>零日<span class="accent">攻擊</span></h1>
+                    <p class="intro-sub" style="margin-top:10px">Zero Day Attack Simulation</p>
+                </div>
+                <div class="mission-brief">
+                    <p><strong style="color:#f87171">&gt;&gt; 狀況：</strong>花蓮港遭受敵軍空襲，導彈波及美崙區與花蓮高中。</p>
+                    <div class="goal">
+                        <strong>&gt;&gt; 任務：</strong>20 分鐘內完成檢傷分類 (START) 與急救處置。
+                    </div>
+                </div>
+                <button class="btn btn-primary" id="startBtn" style="font-size:19px;padding:18px">▶ 任務開始 START MISSION</button>
+            </div>`,
+            init() {
+                document.getElementById('startBtn').onclick = () => {
+                    Game.startTimer();
+                    Game.next();
+                };
+            }
+        });
+
+        // 1. 空襲警報發布
+        const locationStage = () => ({
+            html: ui.card('空襲警報發布', `
+                <div class="alert-banner">🚨 WARNING: AIR RAID SIREN DETECTED</div>
+                <p class="lead">你正在吃早餐，警報聲突然大作。<br>
+                <strong style="color:#fde047">&gt;&gt; 當前位置：</strong>民立里花蓮高中附近早餐店</p>
+                <div class="media map-frame">
+                    <span class="media-tag">LIVE FEED</span>
+                    <iframe src="${CONFIG.mapEmbed}" loading="lazy" allowfullscreen title="當前位置地圖"></iframe>
+                </div>
+                <button class="btn btn-primary" id="nextBtn">確認位置並尋找掩護</button>
+            `, { tag: 'STAGE 01' }),
+            init() {
+                document.getElementById('nextBtn').onclick = () => Game.next();
+            }
+        });
+
+        // 2. 尋找避難場所（電話 9 碼）
+        const shelterPuzzleStage = () => ({
+            html: ui.card('尋找最近空襲避難場所', `
+                <p class="lead">開啟
+                    <a class="inline-link" href="${CONFIG.shelterMapLink}" target="_blank" rel="noreferrer">花蓮市民防災各里避難地圖</a>，
+                    掃描並鎖定最近的避難所。</p>
+                <div class="hint">💡 MISSION HINT：輸入目標場域電話代表號（9 碼）解鎖導航。</div>
+                ${ui.codeGate({ placeholder: '輸入電話號碼', btnText: 'CONFIRM' })}
+            `, { tag: 'STAGE 02' }),
+            init() {
+                Game.bindCode('codeBtn', 'codeInput', '038242236', () => Game.next(), '座標定位失敗，請確認防災地圖。');
+            }
+        });
+
+        // 3. 結構安全評估（答案 D）
+        const basementStage = () => ({
+            html: ui.card('結構安全評估', `
+                <div class="media"><img src="${CONFIG.imgSchoolMap}" alt="校園地圖"></div>
+                <p class="lead"><strong style="color:#fff">掃描校園地圖：請識別具備地下室或堅固結構的避難優先建築。</strong></p>
+                <div class="choice-list" id="buildingList">
+                    ${[['A', '中孝樓'], ['B', '圖資大樓'], ['C', '體育館'], ['D', '綜合大樓']]
+                        .map(([k, t]) => `<button type="button" class="choice" data-ans="${k}"><span class="key">${k}</span>${t}</button>`).join('')}
+                </div>
+            `, { tag: 'STAGE 03' }),
+            init() {
+                document.getElementById('buildingList').addEventListener('click', (e) => {
+                    const c = e.target.closest('.choice');
+                    if (!c) return;
+                    if (c.dataset.ans === 'D') Game.next();
+                    else Game.toast('>> 警告：該建築結構不安全，無法抵禦空襲。');
+                });
+            }
+        });
+
+        // 4. 避難所回報（Padlet 拍照）
+        const shelterPhotoStage = () => ({
+            html: ui.card('避難所回報', `
+                <p class="lead text-center">抵達安全區。開啟平板相機，拍攝<strong style="color:#4ade80">防空避難指引圖示</strong>並上傳至指揮中心。</p>
+                <a class="btn btn-outline" href="${CONFIG.padletShelterPhoto}" target="_blank" rel="noreferrer">&gt;&gt; 啟動上傳連結 (Padlet)</a>
+                <button class="btn btn-success" id="doneBtn">確認上傳完成</button>
+            `, { tag: 'STAGE 04' }),
+            init() {
+                document.getElementById('doneBtn').onclick = () => Game.next();
+            }
+        });
+
+        // 5. 聲紋辨識
+        const alarmQuizStage = () => ({
+            html: ui.card('聲紋辨識程序', `
+                <div class="text-center" style="padding:18px 0 6px">
+                    <div style="font-size:52px;filter:drop-shadow(0 0 18px rgba(34,211,238,.6))">🔊</div>
+                    <p class="lead" style="margin-top:12px">正在接收廣播訊號...<br>請解析該音頻訊號含義。</p>
+                </div>
+                <div class="choice-list" id="alarmList">
+                    <button type="button" class="choice" data-ok="1"><span class="key">A</span>解除空襲警報 (ALL CLEAR)</button>
+                    <button type="button" class="choice" data-ok="0"><span class="key">B</span>持續避難姿勢 (TAKE COVER)</button>
+                </div>
+            `, { tag: 'STAGE 05' }),
+            init() {
+                document.getElementById('alarmList').addEventListener('click', (e) => {
+                    const c = e.target.closest('.choice');
+                    if (!c) return;
+                    if (c.dataset.ok === '1') Game.next();
+                    else Game.toast('>> 解析錯誤：此聲音並非該指令。');
+                });
+            }
+        });
+
+        // 6. 移動路徑規劃
+        const moveStage = () => ({
+            html: ui.card('移動路徑規劃', `
+                <div class="media"><img src="${CONFIG.imgMoveMap}" alt="移動地圖"></div>
+                <p class="lead"><strong style="color:#f87171">&gt;&gt; 新指令：</strong>地面層狀況不明。小隊移動至
+                    <strong style="color:#fde047;font-size:1.2em">2F</strong> 搜索生還者與物資。</p>
+                <button class="btn btn-primary" id="moveBtn">執行移動</button>
+            `, { tag: 'STAGE 06' }),
+            init() {
+                document.getElementById('moveBtn').onclick = () => Game.next();
+            }
+        });
+
+        // 7. 物資補給
+        const suppliesStage = () => ({
+            html: ui.card('物資補給鎖定', `
+                <div class="media">
+                    <span class="media-tag" style="top:auto;bottom:8px;color:#4ade80">SUPPLY_CACHE_FOUND</span>
+                    <img src="${CONFIG.imgSupplies}" alt="急救物資">
+                </div>
+                <p class="lead">在二樓走廊發現急救物資箱，需要存取代碼以解鎖。</p>
+                ${ui.codeGate({ placeholder: '輸入物資箱代碼', btnText: 'UNLOCK' })}
+            `, { tag: 'STAGE 07' }),
+            init() {
+                Game.bindCode('codeBtn', 'codeInput', ['8324123', '832428', '832444'], () => Game.next(), '// ACCESS DENIED // 密碼錯誤');
+            }
+        });
+
+        // 8. 檢傷分類
+        const triageStage = () => ({
+            html: ui.card('檢傷分類任務 (START)', `
+                <div class="notice blue">
+                    <span class="notice-label">指令</span>
+                    使用右側箭頭，將傷患依照 <strong style="color:#f87171">紅（最嚴重）</strong> →
+                    <strong style="color:#facc15">黃</strong> → <strong style="color:#4ade80">綠</strong> →
+                    <strong style="color:#9ca3af">黑</strong> 的順序，<strong style="color:#fff">由上而下</strong>排列。
+                </div>
+                <div class="sort-list" id="triageList"></div>
+                <button class="btn btn-success" id="triageBtn">提交檢傷分類報告</button>
+            `, { tag: 'STAGE 08' }),
+            init() {
+                const items = [...TRIAGE_PATIENTS];
+                Game.sortable('triageList', items, (p, i) =>
+                    `<span class="sort-num">${i + 1}</span><span>${p.text}</span>`);
+                document.getElementById('triageBtn').onclick = () => {
+                    const ok = items.every((p, i) => i === items.length - 1 || p.priority <= items[i + 1].priority);
+                    if (ok) {
+                        Game.toast('>> SYSTEM: 檢傷分類正確！', 'success', 2200);
+                        setTimeout(() => Game.next(), 700);
+                    } else {
+                        Game.toast('>> SYSTEM ERROR: 排序有誤！請依照嚴重程度：紅（最優先）→ 黃 → 綠 → 黑');
+                    }
+                };
+            }
+        });
+
+        // 9-11. 技術考核（共用模板）
+        const drillStage = ({ tag, title, loc, condition, tasks, code, padletUrl }) => () => ({
+            html: ui.card(title, `
+                <div class="notice red">
+                    <span class="notice-label">📍 Location</span>
+                    <strong>${loc}</strong>
+                    <div style="margin-top:8px">
+                        <span class="notice-label">Status</span>
+                        ${condition}
+                    </div>
+                </div>
+                <div class="notice">
+                    <span class="notice-label" style="color:#67e8f9">📋 任務列表</span>
+                    <ul class="task-list">
+                        ${tasks.map((t, i) => `<li><span class="idx">[${i + 1}]</span>${t}</li>`).join('')}
+                    </ul>
+                </div>
+                <a class="btn btn-outline" href="${padletUrl}" target="_blank" rel="noreferrer">&gt;&gt; 上傳紀錄 (Padlet)</a>
+                <div style="margin-top:16px">
+                    ${ui.codeGate({ placeholder: '輸入傷患通關密碼', btnText: 'CONFIRM' })}
+                </div>
+            `, { tag }),
+            init() {
+                Game.bindCode('codeBtn', 'codeInput', code, () => Game.next(), '// ACCESS DENIED // 密碼錯誤');
+            }
+        });
+
+        // 12. CPR
+        const cprStage = () => ({
+            html: ui.card('代碼 999：心肺復甦', `
+                <div class="alert-banner">💔 CRITICAL FAILURE — VITAL SIGNS LOST</div>
+                <div class="notice blue">
+                    <span class="notice-label">📍 位置</span>
+                    <strong>校長室旁對面會議室</strong>
+                    <div style="margin-top:8px">
+                        <span class="notice-label">狀況</span>
+                        傷患疑似血胸，突發心跳停止。
+                    </div>
+                </div>
+                <div class="notice">
+                    <span class="notice-label" style="color:#67e8f9">📋 任務列表</span>
+                    <ul class="task-list">
+                        <li><span class="idx">[1]</span>主手：實施 CPR (30:2)</li>
+                        <li><span class="idx">[2]</span>副手：取得 AED 並執行一次指令</li>
+                        <li><span class="idx">[3]</span>使用電擊器後執行 2 循環 30:2</li>
+                        <li><span class="idx">[4]</span>紀錄：拍照壓胸與吹氣紀錄並上傳</li>
+                    </ul>
+                </div>
+                <a class="btn btn-outline" href="${CONFIG.padletCPR}" target="_blank" rel="noreferrer">上傳急救紀錄</a>
+                <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:16px">
+                    ${ui.codeGate({ label: 'AED Device Backdoor Code', placeholder: '取得關主通關密碼', btnText: 'CONFIRM' })}
+                </div>
+            `, { tag: 'STAGE 12' }),
+            init() {
+                Game.bindCode('codeBtn', 'codeInput', '119911', () => {
+                    Game.stopTimer();
+                    Game.next();
+                }, '// ACCESS DENIED // 密碼錯誤');
+            }
+        });
+
+        // 13. 結業
+        const finishStage = () => ({
+            html: Game.ui.finish({
+                subtitle: '任務代號：零日攻擊 — 演練完成',
+                time: Game.state.finalTime,
+                checklist: [
+                    '歸還急救包、AED、安妮模型',
+                    '向教官／老師回報任務結束',
+                    '填寫後測表單並領取結業證書',
+                    '保留此頁面給老師檢查，可先截圖留存'
+                ]
+            }),
+            init() {}
+        });
+
+        Game.mount({
+            name: '零日攻擊',
+            sub: 'ZERO DAY SIM',
+            homeHref: '../',
+            onStage,
+            stages: [
+                introStage,
+                locationStage,
+                shelterPuzzleStage,
+                basementStage,
+                shelterPhotoStage,
+                alarmQuizStage,
+                moveStage,
+                suppliesStage,
+                triageStage,
+                drillStage({
+                    tag: 'DRILL 01',
+                    title: '技術考核：頭部創傷',
+                    loc: '與忠孝樓之間天橋',
+                    condition: '頭部創傷，左小腿骨折',
+                    tasks: ['左小腿骨折固定', '頭部加壓止血', '包紮後拍照上傳'],
+                    code: '482434',
+                    padletUrl: CONFIG.padletPatient1
+                }),
+                drillStage({
+                    tag: 'DRILL 02',
+                    title: '技術考核：動脈出血',
+                    loc: '2樓男廁前',
+                    condition: '前臂深裂傷，持續性出血',
+                    tasks: ['立即止血處置', '點擊 Padlet 評論上傳'],
+                    code: '222468',
+                    padletUrl: CONFIG.padletPatient2
+                }),
+                drillStage({
+                    tag: 'DRILL 03',
+                    title: '技術考核：嚴重撕裂',
+                    loc: '與科學館之間天橋',
+                    condition: '右肩頰嚴重撕裂傷，大出血',
+                    tasks: ['加壓止血', '傷口包紮', '拍照上傳'],
+                    code: '6458420',
+                    padletUrl: CONFIG.padletPatient3
+                }),
+                cprStage,
+                finishStage
+            ]
+        });
+    })();
+    </script>
+</body>
+</html>
